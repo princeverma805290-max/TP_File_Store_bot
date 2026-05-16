@@ -56,8 +56,12 @@ async def start_command(client: Client, message: Message):
                 return await message.reply("Couldn't generate short link.")
 
             short_photo = client.messages.get("SHORT_PIC", "")
-            short_caption = client.messages.get("SHORT_MSG", "")
-            tutorial_link = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
+            short_caption = client.messages.get("SHORT_MSG", "").format(
+    first=message.from_user.first_name,
+    mention=message.from_user.mention,
+    id=message.from_user.id
+            )
+            tutorial_link = getattr(client, 'tutorial_link', "https://t.me/how_to_open02/2")
 
             await client.send_photo(
                 chat_id=message.chat.id,
@@ -65,11 +69,11 @@ async def start_command(client: Client, message: Message):
                 caption=short_caption,
                 reply_markup=InlineKeyboardMarkup([
                     [
-                        InlineKeyboardButton("• ᴏᴘᴇɴ ʟɪɴᴋ", url=short_link),
-                        InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=tutorial_link)
+                        InlineKeyboardButton("📥 Download ʟɪɴᴋ 📥", url=short_link),
+                        InlineKeyboardButton("‼️ ᴛᴜᴛᴏʀɪᴀʟ ⁉️", url=tutorial_link)
                     ],
                     [
-                        InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/Premium_Fliix/21")
+                        InlineKeyboardButton("⭐ ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ ⭐", url="https://t.me/HENTAI_HUB_02/18")
                     ]
                 ])
             )
@@ -212,7 +216,22 @@ async def start_command(client: Client, message: Message):
                 ) if bool(client.messages.get('CAPTION', '')) and bool(msg.document)
                 else ("" if not msg.caption else msg.caption.html)
             )
-            reply_markup = msg.reply_markup if not client.disable_btn else None
+            # Custom buttons
+            custom_buttons = []
+            if hasattr(client, 'custom_buttons') and client.custom_buttons:
+                for name, data in client.custom_buttons.items():
+                    parts = data.split("|")
+                    btn_text = parts[0]
+                    btn_url = parts[1] if len(parts) > 1 else ""
+                    if btn_url:
+                        custom_buttons.append([InlineKeyboardButton(btn_text, url=btn_url)])
+
+            if not client.disable_btn and custom_buttons:
+                reply_markup = InlineKeyboardMarkup(custom_buttons)
+            elif not client.disable_btn:
+                reply_markup = msg.reply_markup
+            else:
+                reply_markup = None
 
             try:
                 copied_msg = await msg.copy(
@@ -350,4 +369,5 @@ async def my_plan(client: Client, message: Message):
             "🔸 Request: Disabled\n\n"
             "🔓 Unlock Premium to get more benefits\n"
             "Contact: @GetoPro"
-        )
+            )
+                
