@@ -48,6 +48,8 @@ def get_short(url, client):
 
 @Client.on_message(filters.command('shortner') & filters.private)
 async def shortner_command(client: Client, message: Message):
+    if message.from_user.id != client.owner:
+        return await message.reply("❌ ᴛʜɪꜱ ᴄᴏᴍᴍᴀɴᴅ ɪꜱ ᴏɴʟʏ ғᴏʀ ᴏᴡɴᴇʀ!")
     await shortner_panel(client, message)
 
 #===============================================================#
@@ -256,5 +258,4 @@ async def test_shortner(client: Client, query: CallbackQuery):
         msg = f"**❌ ꜱʜᴏʀᴛɴᴇʀ ᴛᴇꜱᴛ ꜰᴀɪʟᴇᴅ!**\n\n**ᴇʀʀᴏʀ:** `{str(e)}`"
     
     await query.message.edit_text(msg, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]]))
-
 
