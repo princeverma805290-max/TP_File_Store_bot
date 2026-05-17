@@ -40,57 +40,121 @@ async def get_db_channels_info(client):
 async def batch(client: Client, message: Message):
     if message.from_user.id not in client.admins:
         return await message.reply(client.reply_text)
-    
-    # Get all database channels with links
-    db_channels_info = await get_db_channels_info(client)
-    
-    while True:
+
+    user_id = message.from_user.id
+
+    # Initialize batch storage
+    if not hasattr(client, 'batch_files'):
+        client.batch_files = {}
+    client.batch_files[user_id] = []
+
+    status_msg = await message.reply(
+        "<blockquote>📦 **ʙᴀᴛᴄʜ ᴍᴏᴅᴇ ᴀᴄᴛɪᴠᴇ**</blockquote>\n\n"
+        "✅ ᴀʙ ᴊɪᴛɴɪ ʙʜɪ ꜰɪʟᴇs ᴄʜᴀʜɪʏᴇ ʙᴏᴛ ᴘᴇ ꜰᴏʀᴡᴀʀᴅ ᴋᴀʀᴏ\n"
+        "📁 ꜰɪʟᴇs ᴀᴅᴅᴇᴅ: **0**\n\n"
+        "⬇️ ᴊᴀʙ ʜᴏ ᴊᴀᴀʏᴇ ᴛᴀʙ ɴɪᴄʜᴇ ʙᴜᴛᴛᴏɴ ᴅᴀʙᴀᴏ:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ ɢᴇɴᴇʀᴀᴛᴇ ʟɪɴᴋ", callback_data=f"batch_generate_{user_id}")],
+            [InlineKeyboardButton("❌ ᴄʟᴏsᴇ", callback_data=f"batch_close_{user_id}")]
+        ])
+    )
+
+    # Store status message id
+    if not hasattr(client, 'batch_status_msg'):
+        client.batch_status_msg = {}
+    client.batch_status_msg[user_id] = status_msg
+
+#===============================================================#
+
+@Client.on_message(filters.private & filters.forwarded)
+async def batch_collect(client: Client, message: Message):
+    user_id = message.from_user.id
+    if not hasattr(client, 'batch_files') or user_id not in client.batch_files:
+        return
+    if user_id not in client.admins:
+        return
+
+    try:
+        # Copy file to DB channel
+        from pyrogram.errors import FloodWait
+        import asyncio
         try:
-            first_message = await client.ask(
-                text=f"""<blockquote>ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ꜰɪʀsᴛ ᴍᴇssᴀɢᴇ ꜰʀᴏᴍ ᴅʙ ᴄʜᴀɴɴᴇʟ (ᴡɪᴛʜ ǫᴜᴏᴛᴇs)..</blockquote>
-{db_channels_info}
+            post_message = await message.copy(chat_id=client.db, disable_notification=True)
+        except FloodWait as e:
+            await asyncio.sleep(e.x)
+            post_message = await message.copy(chat_id=client.db, disable_notification=True)
 
-<blockquote>ᴏʀ sᴇɴᴅ ᴛʜᴇ ᴅʙ ᴄʜᴀɴɴᴇʟ ᴘᴏsᴛ ʟɪɴᴋ</blockquote>""",
-                chat_id=message.from_user.id,
-                filters=(filters.forwarded | (filters.text & ~filters.forwarded)),
-                timeout=60
+        client.batch_files[user_id].append(post_message.id)
+        count = len(client.batch_files[user_id])
+
+        # Update status message
+        status_msg = client.batch_status_msg.get(user_id)
+        if status_msg:
+            await status_msg.edit_text(
+                "<blockquote>📦 **ʙᴀᴛᴄʜ ᴍᴏᴅᴇ ᴀᴄᴛɪᴠᴇ**</blockquote>\n\n"
+                "✅ ᴀʙ ᴊɪᴛɴɪ ʙʜɪ ꜰɪʟᴇs ᴄʜᴀʜɪʏᴇ ʙᴏᴛ ᴘᴇ ꜰᴏʀᴡᴀʀᴅ ᴋᴀʀᴏ\n"
+                f"📁 ꜰɪʟᴇs ᴀᴅᴅᴇᴅ: **{count}**\n\n"
+                "⬇️ ᴊᴀʙ ʜᴏ ᴊᴀᴀʏᴇ ᴛᴀʙ ɴɪᴄʜᴇ ʙᴜᴛᴛᴏɴ ᴅᴀʙᴀᴏ:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ ɢᴇɴᴇʀᴀᴛᴇ ʟɪɴᴋ", callback_data=f"batch_generate_{user_id}")],
+                    [InlineKeyboardButton("❌ ᴄʟᴏsᴇ", callback_data=f"batch_close_{user_id}")]
+                ])
             )
-        except:
-            return
-        f_msg_id, source_channel_id = await get_message_id(client, first_message)
-        if f_msg_id:
-            break
-        else:
-            await first_message.reply("<blockquote>✗ ᴇʀʀᴏʀ</blockquote>\n\nᴛʜɪs ꜰᴏʀᴡᴀʀᴅᴇᴅ ᴘᴏsᴛ ɪs ɴᴏᴛ ꜰʀᴏᴍ ᴍʏ ᴅʙ ᴄʜᴀɴɴᴇʟ ᴏʀ ᴛʜɪs ʟɪɴᴋ ɪs ᴛᴀᴋᴇɴ ꜰʀᴏᴍ ᴅʙ ᴄʜᴀɴɴᴇʟ", quote = True)
-            continue
+    except Exception as e:
+        await message.reply(f"❌ Error: {e}")
 
-    while True:
-        try:
-            second_message = await client.ask(
-                text=f"""<blockquote>ꜰᴏʀᴡᴀʀᴅ ᴛʜᴇ ʟᴀsᴛ ᴍᴇssᴀɢᴇ ꜰʀᴏᴍ ᴅʙ ᴄʜᴀɴɴᴇʟ (ᴡɪᴛʜ ǫᴜᴏᴛᴇs)..</blockquote>
-{db_channels_info}
+#===============================================================#
 
-<blockquote>ᴏʀ sᴇɴᴅ ᴛʜᴇ ᴅʙ ᴄʜᴀɴɴᴇʟ ᴘᴏsᴛ ʟɪɴᴋ</blockquote>""",
-                chat_id=message.from_user.id,
-                filters=(filters.forwarded | (filters.text & ~filters.forwarded)),
-                timeout=60
-            )
-        except:
-            return
-        s_msg_id, _ = await get_message_id(client, second_message)  # We only need msg_id for second message
-        if s_msg_id:
-            break
-        else:
-            await second_message.reply("<blockquote>✗ ᴇʀʀᴏʀ</blockquote>\n\nᴛʜɪs ꜰᴏʀᴡᴀʀᴅᴇᴅ ᴘᴏsᴛ ɪs ɴᴏᴛ ꜰʀᴏᴍ ᴍʏ ᴅʙ ᴄʜᴀɴɴᴇʟ ᴏʀ ᴛʜɪs ʟɪɴᴋ ɪs ᴛᴀᴋᴇɴ ꜰʀᴏᴍ ᴅʙ ᴄʜᴀɴɴᴇʟ", quote = True)
-            continue
+@Client.on_callback_query(filters.regex(r"^batch_generate_(\d+)$"))
+async def batch_generate(client: Client, query):
+    user_id = int(query.matches[0].group(1))
 
-    # Use the source channel ID for encoding instead of default primary channel
-    client.LOGGER(__name__, client.name).info(f"Generating batch link with source channel: {source_channel_id}, first_msg: {f_msg_id}, last_msg: {s_msg_id}")
-    string = f"get-{f_msg_id * abs(source_channel_id)}-{s_msg_id * abs(source_channel_id)}"
+    if query.from_user.id != user_id:
+        return await query.answer("❌ ʏᴇ ᴀᴀᴘᴋᴀ ʙᴀᴛᴄʜ ɴᴀʜɪɴ ʜᴀɪ!", show_alert=True)
+
+    if not hasattr(client, 'batch_files') or user_id not in client.batch_files:
+        return await query.answer("❌ ᴋᴏɪ ꜰɪʟᴇ ɴᴀʜɪɴ ʜᴀɪ!", show_alert=True)
+
+    files = client.batch_files[user_id]
+    if not files:
+        return await query.answer("❌ ᴋᴏɪ ꜰɪʟᴇ ꜰᴏʀᴡᴀʀᴅ ɴᴀʜɪɴ ᴋɪ!", show_alert=True)
+
+    first_id = files[0]
+    last_id = files[-1]
+
+    string = f"get-{first_id * abs(client.db)}-{last_id * abs(client.db)}"
     base64_string = await encode(string)
     link = f"https://t.me/{client.username}?start={base64_string}"
-    reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔁 sʜᴀʀᴇ ᴜʀʟ", url=f'https://telegram.me/share/url?url={link}')]])
-    await second_message.reply_text(f"<blockquote>✓ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʙᴀᴛᴄʜ ʟɪɴᴋ</blockquote>\n\n<code>{link}</code>", quote=True, reply_markup=reply_markup)
+
+    # Clear batch data
+    client.batch_files.pop(user_id, None)
+    client.batch_status_msg.pop(user_id, None)
+
+    await query.message.edit_text(
+        f"<blockquote>✓ ʙᴀᴛᴄʜ ʟɪɴᴋ ʀᴇᴀᴅʏ!</blockquote>\n\n"
+        f"📁 ᴛᴏᴛᴀʟ ꜰɪʟᴇs: **{len(files)}**\n\n"
+        f"<code>{link}</code>",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔁 sʜᴀʀᴇ ᴜʀʟ", url=f'https://telegram.me/share/url?url={link}')]
+        ])
+    )
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex(r"^batch_close_(\d+)$"))
+async def batch_close(client: Client, query):
+    user_id = int(query.matches[0].group(1))
+
+    if query.from_user.id != user_id:
+        return await query.answer("❌ ʏᴇ ᴀᴀᴘᴋᴀ ʙᴀᴛᴄʜ ɴᴀʜɪɴ ʜᴀɪ!", show_alert=True)
+
+    # Clear batch data
+    if hasattr(client, 'batch_files'):
+        client.batch_files.pop(user_id, None)
+    if hasattr(client, 'batch_status_msg'):
+        client.batch_status_msg.pop(user_id, None)
+
+    await query.message.edit_text("❌ **ʙᴀᴛᴄʜ ᴄᴀɴᴄᴇʟ ʜᴏ ɢᴀʏᴀ!**")
 
 #===============================================================#
 
@@ -176,4 +240,4 @@ async def nbatch(client: Client, message: Message):
     ])
     
     await first_message.reply_text(f"<blockquote>✓ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʙᴀᴛᴄʜ ʟɪɴᴋ</blockquote>\n\n<code>{link}</code>", quote=True, reply_markup=reply_markup)    
-
+                
